@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_custom(xsize, ysize, x_label, y_label, equal=True, ncol=1, nrow=1, sharex=False):
+def plot_custom(xsize, ysize, x_label, y_label, equal=True, ncol=1, nrow=1, sharex=False, 
+                labHor = False, hSpaceSetting = 0.4, wSpaceSetting = 0.4, labelPad = 15, axefont = 20):
     """Initiates and plots a figure and a set of axes.
 
     Parameters
@@ -53,10 +54,14 @@ def plot_custom(xsize, ysize, x_label, y_label, equal=True, ncol=1, nrow=1, shar
     minl = 2.0  # minor tick length
 
     # set global font sizes
-    axefont = 20  # axis label font size
     numsize = 20  # axis number font size
     legfont = 20  # legend font size
-    labelfont = 30
+    
+    # set label rotations
+    if labHor is True:
+        ylabelRot = 0    
+    else:
+        ylabelRot = 90
 
     fig, ax = plt.subplots(nrows=nrow, ncols=ncol, figsize=(xsize, ysize))
 
@@ -105,10 +110,11 @@ def plot_custom(xsize, ysize, x_label, y_label, equal=True, ncol=1, nrow=1, shar
             pad=numpad,
             right="off",
         )
-        ax.set_ylabel(y_label, fontsize=labelfont, color="black")
-        ax.set_xlabel(x_label, fontsize=labelfont, color="black")
+        ax.set_ylabel(y_label, fontsize=axefont, color="black", rotation = ylabelRot,  labelpad=labelPad)
+        ax.set_xlabel(x_label, fontsize=axefont, color="black")
         if equal == True:
             ax.axis("equal")
+        plt.subplots_adjust(hspace = hSpaceSetting, wspace = wSpaceSetting)
 
     elif ncol == 1 or nrow == 1:
         fig.subplots_adjust(right=0.75)
@@ -158,10 +164,11 @@ def plot_custom(xsize, ysize, x_label, y_label, equal=True, ncol=1, nrow=1, shar
                 right="off",
             )
 
-            ax[i].set_ylabel(y_label[i], fontsize=labelfont, color="black")
-            ax[i].set_xlabel(x_label[i], fontsize=labelfont, color="black")
+            ax[i].set_ylabel(y_label[i], fontsize=axefont, color="black", rotation = ylabelRot,  labelpad=labelPad)
+            ax[i].set_xlabel(x_label[i], fontsize=axefont, color="black")
             if equal == True:
                 ax[i].axis("equal")
+        plt.subplots_adjust(hspace = hSpaceSetting, wspace = wSpaceSetting)
 
     else:
         fig.subplots_adjust(right=0.75)
@@ -212,11 +219,12 @@ def plot_custom(xsize, ysize, x_label, y_label, equal=True, ncol=1, nrow=1, shar
                     right="off",
                 )
                 ax[i, j].set_ylabel(
-                    y_label[2*i+j], fontsize=labelfont, color="black")
+                    y_label[2*i+j], fontsize=axefont, color="black", rotation = ylabelRot,  labelpad=labelPad)
                 ax[i, j].set_xlabel(
-                    x_label[2*i+j], fontsize=labelfont, color="black")
+                    x_label[2*i+j], fontsize=axefont, color="black")
                 if equal == True:
                     ax[i, j].axis("equal")
+        plt.subplots_adjust(hspace = hSpaceSetting, wspace = wSpaceSetting)
 
     plt.tight_layout()
 
