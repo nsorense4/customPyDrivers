@@ -16,6 +16,8 @@ import matplotlib.animation as animation
 from matplotlib import style
 import numpy as np
 import nidaqmx
+from datetime import datetime
+import os
 
 import tkinter as tk
 import sys
@@ -39,11 +41,15 @@ timeInt = 0.1
 startTime = time.time()
 powerList = np.zeros(N)
 powerList0 = np.zeros(N)
+powerList1 = np.zeros(1)
+powerList2 = np.zeros(1)
+timeListAppend = np.zeros(1)
 timeList = np.linspace(-N*timeInt, 0, N)
 
 configPM100D = 0
 configDAQ = 1
 config = configDAQ
+appendBool = False
 
 initDAQ = False
 
@@ -96,6 +102,37 @@ def animate(i):
     a.set_ylabel('Power (mW)')
     f.tight_layout()
     time.sleep(timeInt)
+    
+def animateAppend(i):
+    global powerList1, timeListAppend, powerList2
+    power = readPD(DAQ)
+    powerList1 = np.append(powerList1,power[0])
+    powerList2 = np.append(powerList2,power[1])
+    timeListAppend = np.append(timeListAppend,time.time()-startTime)
+    a.clear()
+    a.plot(timeListAppend, powerList1)
+    a.plot(timeListAppend, powerList2)
+    
+    a.set_xlabel('Time (s)')
+    a.set_ylabel('Power (mW)')
+    f.tight_layout()
+    time.sleep(timeInt)
+    
+def stopAndSave():
+    global powerList1, timeListAppend, powerList2
+    
+    data = np.vstack([timeListAppend, powerList1, powerList2])
+    
+    dateTimeObj = datetime.now()
+    preamble = (str(dateTimeObj.year) + str(dateTimeObj.month) + str(dateTimeObj.day) + '-'
+                + str(dateTimeObj.hour) + '_' + str(dateTimeObj.minute) + '_' +
+                str(dateTimeObj.second))
+    
+    fileName = ("C:/Users/srv_plank/Documents/computerGeneratedHolography/data/" 
+                + preamble + 'Exposure.csv')
+    if not os.path.exists(fileName): np.savetxt(fileName, data, delimiter=",")
+    
+    raise Exception('Ending the exposure recording.')
 
     
 class application(tk.Tk):
@@ -104,7 +141,7 @@ class application(tk.Tk):
         
         tk.Tk.__init__(self, *args, **kwargs)
         tk.Tk.wm_title(self, "PM100D Power Monitoring")
-        
+        tk.Button(self, text="stop", command=stopAndSave).pack()
         
         container = tk.Frame(self)
         container.pack(side="top", fill="both", expand = True)
@@ -140,8 +177,12 @@ class powerMonitor(tk.Frame):
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
         canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        
 
 
 app = application()
-ani = animation.FuncAnimation(f, animate, interval=100)
+if appendBool == True:
+    ani = animation.FuncAnimation(f, animateAppend, interval=100)
+else:
+    ani = animation.FuncAnimation(f, animate, interval=100)
 app.mainloop()
