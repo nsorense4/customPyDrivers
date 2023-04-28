@@ -37,19 +37,21 @@ a = f.add_subplot(111)
 
 
 N = 100
-timeInt = 0.1
+timeInt = 0.2
 startTime = time.time()
 powerList = np.zeros(N)
 powerList0 = np.zeros(N)
+powerList5320 = np.zeros(N)
 powerList1 = np.zeros(1)
 powerList2 = np.zeros(1)
+powerList5321 = np.zeros(1)
 timeListAppend = np.zeros(1)
 timeList = np.linspace(-N*timeInt, 0, N)
 
 configPM100D = 0
 configDAQ = 1
 config = configDAQ
-appendBool = False
+appendBool = True
 
 initDAQ = False
 
@@ -57,6 +59,7 @@ def initDAQPD(avg = 10):
     DAQ = nidaqmx.Task("task")
     DAQ.ai_channels.add_ai_voltage_chan("Dev1/ai0", min_val=0, max_val=10)
     DAQ.ai_channels.add_ai_voltage_chan("Dev1/ai1", min_val=0, max_val=10)
+    DAQ.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
     
     return DAQ
 
@@ -69,8 +72,8 @@ elif config == configDAQ:
 def convV2Int(volt):
     # scatters for first order: 2.505 V, 1.345 mW, 2.82900037e-06 V, 0 mW
     # zero order: 2.27825 V, 1.236 mW,  6.47855904e-06 V, 0 mW
-    slope = np.array([1.345/(2.505-0.01197444), 1.236/(2.27825-0.00533462)])
-    intercept = slope*np.array([0.01197444, (0.00533462)])
+    slope = np.array([1.345/(2.505-0.01197444), 1.236/(2.27825-0.00533462),0.131/(0.3961962030870032-0.00977212)])
+    intercept = slope*np.array([0.01197444, (0.00533462), (0.00977212)])
     return slope*volt - intercept
     
 def readPD(DAQ, PD = '0th', avgNum = 10):
@@ -82,13 +85,14 @@ def readPD(DAQ, PD = '0th', avgNum = 10):
 
 
 def animate(i):
-    global powerList, timeList, powerList0
+    global powerList, timeList, powerList0, powerList5320
     if config == configPM100D:
         powerList = shift(powerList, -1, cval = PD.readPower()*1000)
     elif config == configDAQ:
         power = readPD(DAQ)
         powerList = shift(powerList, -1, cval = power[0])
         powerList0 = shift(powerList0, -1, cval = power[1])
+        powerList5320 = shift(powerList5320, -1, cval = power[2])
     
     timeList = shift(timeList, -1, cval = time.time()-startTime)
     a.clear()
@@ -97,6 +101,7 @@ def animate(i):
     elif config == configDAQ:
         a.plot(timeList, powerList)
         a.plot(timeList, powerList0)
+        a.plot(timeList, powerList5320)
     
     a.set_xlabel('Time (s)')
     a.set_ylabel('Power (mW)')
@@ -104,14 +109,16 @@ def animate(i):
     time.sleep(timeInt)
     
 def animateAppend(i):
-    global powerList1, timeListAppend, powerList2
+    global powerList1, timeListAppend, powerList2, powerList5321
     power = readPD(DAQ)
     powerList1 = np.append(powerList1,power[0])
     powerList2 = np.append(powerList2,power[1])
+    powerList5321 = np.append(powerList5321,power[2])
     timeListAppend = np.append(timeListAppend,time.time()-startTime)
     a.clear()
     a.plot(timeListAppend, powerList1)
     a.plot(timeListAppend, powerList2)
+    a.plot(timeListAppend, powerList5321*10)
     
     a.set_xlabel('Time (s)')
     a.set_ylabel('Power (mW)')
@@ -119,9 +126,9 @@ def animateAppend(i):
     time.sleep(timeInt)
     
 def stopAndSave():
-    global powerList1, timeListAppend, powerList2
+    global powerList1, timeListAppend, powerList2, powerList5321
     
-    data = np.vstack([timeListAppend, powerList1, powerList2])
+    data = np.vstack([timeListAppend, powerList1, powerList2, powerList5321])
     
     dateTimeObj = datetime.now()
     preamble = (str(dateTimeObj.year) + str(dateTimeObj.month) + str(dateTimeObj.day) + '-'
