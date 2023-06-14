@@ -39,25 +39,26 @@ except:
     print ("adding " + module_path)
     sys.path.append(module_path)
     
-from TimeTagger import createTimeTagger, Combiner, Coincidence, Counter, Countrate, Correlation, TimeDifferences, TimeTagStream, Scope, Event, CHANNEL_UNUSED, UNKNOWN, LOW, HIGH
+from TimeTagger import (createTimeTagger, Combiner, Coincidence, Counter, 
+                        Countrate, Correlation, TimeDifferences, TimeTagStream, 
+                        Scope, Event, CHANNEL_UNUSED, UNKNOWN, LOW, HIGH)
 
 import time
 from time import sleep
         
 class timeTaggerCustom(tk.Frame):
-    LARGE_FONT= ("Verdana", 12)
-    style.use("ggplot")
-    
-    f = Figure(figsize=(5,5), dpi=100)
-    a = f.add_subplot(111)
-    
+   
     
     def __init__(self, parent, controller):
+        LARGE_FONT= ("Verdana", 12)
+        style.use("ggplot")
         
+        f = Figure(figsize=(5,5), dpi=100)
+        a = f.add_subplot(111)
         
         tk.Frame.__init__(self,parent)
         tk.Frame.__init__(self,parent)
-        label = tk.Label(self, text="PM100D Power Monitoring", font=self.LARGE_FONT)
+        label = tk.Label(self, text="TimeTagging", font=self.LARGE_FONT)
         label.pack(pady=10,padx=10)
 
         # button = ttk.Button(self, text="Visit Page 1",
@@ -69,41 +70,60 @@ class timeTaggerCustom(tk.Frame):
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
         canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-    
-    def startCountrate(self, chan1=1, chan2=2, N = 100, timeInt = 0.2, trig=0.1, deadtime=6000, binwidth = 1000, binnumber = 200):
+        
+    def initTimeTagger(channels, trig=0.1, deadtime=6000):
         # create a timetagger instance
         tagger = createTimeTagger()
         tagger.reset()
         
-        
-        # Set the trigger level and deadtime for each channel
-        [tagger.setTriggerLevel(i, trig) for i in range(8)]
-        [tagger.setDeadtime(i, deadtime) for i in range(8)]
-        
-        #delay the two beamsplit channels to coincide with zero time difference at the idler (correlation)
-        tagger.setInputDelay(channel=chan1,delay=0)#-3900)
-        tagger.setInputDelay(channel=chan2,delay=0)#-0, 2900)
+        #Set the trigger level and deadtime for each channel
+        for i in range(len(channels)):
+            tagger.setTriggerLevel(i, trig)
+            tagger.setDeadtime(i, deadtime)
+            tagger.setInputDelay(channel=channels[i],delay=0)
         tagger.sync()
         
-
         #set the channels to count
-        cr = Countrate( tagger, channels=[chan1, chan2] )
+        cr = Countrate( tagger, channels=channels )
         tagger.sync()
+        
+        return tagger, cr
+    
+    def startCountrate(self, channels = [1,2], N = 100,  binwidth = 1000, binnumber = 200, timeInt = 0.2):
+        tagger, cr = self.initTimeTagger(channels)
         
         #wait and then start taking data
         sleep(0.1)
-        data = cr.getData()
         
         startTime = time.time()
-        cr1 = np.zeros(N)
-        cr2
+        crData = np.zeros(N, len(channels))
+        timeList = np.zeros(N)
                
         app = application()
-        ani = animation.FuncAnimation(self.f, self.animateCountrate, interval=100)
+        ani = animation.FuncAnimation(self.f, 
+                                      self.animateCountrate(channels, crData, 
+                                                            timeList, startTime, 
+                                                            timeInt, cr),
+                                      interval=100)
         app.mainloop()
 
-
-    
+        
+    def animateCountrate(self, channels, crData, timeList, startTime, timeInt, cr):
+        
+        timeList = np.roll(timeList, -1, axis = 0)
+        timeList[-1] = time.time()-startTime
+        crData = np.roll(crData, -1, axis = 0)
+        crData[-1, :] = cr.getData()
+        
+        self.a.clear()
+        for i in range(len(channels)):
+            self.a.plot(timeList, data[:,i])
+        
+        self.a.set_xlabel('Time (s)')
+        self.a.set_ylabel('Power (mW)')
+        self.f.tight_layout()
+        time.sleep(timeInt)
+        
     # def animateCountrateHistogram(i):
     #     global data
     
@@ -120,61 +140,33 @@ class timeTaggerCustom(tk.Frame):
     #     a.set_ylabel('Power (mW)')
     #     f.tight_layout()
     #     time.sleep(timeInt)
-        
-    def animateCountrate(i):
-        global data, timeList, startTime
-        
-        timeList = shift(timeList, -1, cval = time.time()-startTime)
-        a.clear()
-        a.plot(timeList, powerList)
-        
-        a.set_xlabel('Time (s)')
-        a.set_ylabel('Power (mW)')
-        f.tight_layout()
-        time.sleep(timeInt)
-        
-        
     
-    def countrate(chan1=1, chan2=2, trig=0.1, deadtime=6000, binwidth = 1000, 
-                  binnumber = 200, measurementTime = 5):
-        
+    # def crossCorrelation():
 
-        
-
-        
-        for i in range(measurementTime):
-            data = cr.getData()
-            #barg = bar(y_pos, data, align='center', alpha=0.5)
-            fig.canvas.draw()
-            ax.set_ylim(-1000, 1.2*max(cr.getData()))
-            time.sleep(.05)
-    
-    def crossCorrelation():
-
-        # create a timetagger instance
-        tagger = createTimeTagger()
-        tagger.reset()
+    #     # create a timetagger instance
+    #     tagger = createTimeTagger()
+    #     tagger.reset()
         
         
-        # Set the trigger level and deadtime for each channel
-        [tagger.setTriggerLevel(i, trig) for i in range(8)]
-        [tagger.setDeadtime(i, deadtime) for i in range(8)]
+    #     # Set the trigger level and deadtime for each channel
+    #     [tagger.setTriggerLevel(i, trig) for i in range(8)]
+    #     [tagger.setDeadtime(i, deadtime) for i in range(8)]
         
-        #delay the two beamsplit channels to coincide with zero time difference at the idler (correlation)
-        tagger.setInputDelay(channel=chan1,delay=0)#-3900)
-        tagger.setInputDelay(channel=chan2,delay=0)#-0, 2900)
-        tagger.sync()
+    #     #delay the two beamsplit channels to coincide with zero time difference at the idler (correlation)
+    #     tagger.setInputDelay(channel=chan1,delay=0)#-3900)
+    #     tagger.setInputDelay(channel=chan2,delay=0)#-0, 2900)
+    #     tagger.sync()
         
-        # cross correlation between channels 6 and 7, and 5 and 7
-        corr = Correlation(tagger, channel_1=chan1, channel_2=chan2, binwidth=binwidth, n_bins=binnumber)
-        tstart = time.time()    # for profiling
+    #     # cross correlation between channels 6 and 7, and 5 and 7
+    #     corr = Correlation(tagger, channel_1=chan1, channel_2=chan2, binwidth=binwidth, n_bins=binnumber)
+    #     tstart = time.time()    # for profiling
         
-        sleep(1)
-        fig, ax = plt.subplots(1, 1)
-        corr_plot, = fig.plot(corr.getIndex()/1e3, corr.getData(), label= str(chan1)+'/'+str(chan2))
-        ax.set_xlabel('Time [ns]')
-        ax.set_ylabel('Correlations/sec')
-        ax.set_title('Cross correlation between channel 5 and 7')
+    #     sleep(1)
+    #     fig, ax = plt.subplots(1, 1)
+    #     corr_plot, = fig.plot(corr.getIndex()/1e3, corr.getData(), label= str(chan1)+'/'+str(chan2))
+    #     ax.set_xlabel('Time [ns]')
+    #     ax.set_ylabel('Correlations/sec')
+    #     ax.set_title('Cross correlation between channel 5 and 7')
 
 class application(tk.Tk):
 
@@ -201,9 +193,7 @@ class application(tk.Tk):
         frame.tkraise()
         
     def stopAndSave():
-        global powerList1, timeListAppend, powerList2, powerList5321
-        
-        data = np.vstack([timeListAppend, powerList1, powerList2, powerList5321])
+        global data
         
         dateTimeObj = datetime.now()
         preamble = (str(dateTimeObj.year) + str(dateTimeObj.month) + str(dateTimeObj.day) + '-'
@@ -214,5 +204,5 @@ class application(tk.Tk):
                     + preamble + 'Exposure.csv')
         if not os.path.exists(fileName): np.savetxt(fileName, data, delimiter=",")
         
-        raise Exception('Ending the exposure recording.')         
+        raise Exception('Saving data.')         
 
