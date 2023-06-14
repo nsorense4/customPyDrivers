@@ -43,20 +43,7 @@ import time
 from time import sleep
 
         
-class timeTaggerCustom(tk.Frame):
-    def __init__(self, parent):
-        global LARGE_FONT
-        
-        tk.Frame.__init__(self)
-        tk.Frame.__init__(self)
-        label = tk.Label(self, text="TimeTagging", font=LARGE_FONT)
-        label.pack(pady=10,padx=10)
-
-        canvas = FigureCanvasTkAgg(f, self)
-        canvas.draw()
-        canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
-
-        canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+class timeTaggerCustom():
         
     def initTimeTagger(channels, trig=0.1, deadtime=6000):
         # create a timetagger instance
@@ -137,45 +124,6 @@ class timeTaggerCustom(tk.Frame):
     #     ax.set_ylabel('Correlations/sec')
     #     ax.set_title('Cross correlation between channel 5 and 7')
 
-class application(tk.Tk):
-
-    def __init__(self, *args, **kwargs):
-        
-        tk.Tk.__init__(self, *args, **kwargs)
-        tk.Tk.wm_title(self, "Timetagging")
-        tk.Button(self, text="stop", command=self.stopAndSave).pack()
-        
-        container = tk.Frame(self)
-        container.pack(side="top", fill="both", expand = True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        self.frames = {}
-        frame1 = timeTaggerCustom(self)
-        self.frames[timeTaggerCustom] = frame1
-        frame1.grid(row=0, column=0, sticky="nsew")
-        self.show_frame(timeTaggerCustom)
-
-    def show_frame(self, cont):
-
-        frame = self.frames[cont]
-        frame.tkraise()
-        
-    def stopAndSave():
-        global data
-        
-        dateTimeObj = datetime.now()
-        preamble = (str(dateTimeObj.year) + str(dateTimeObj.month) + str(dateTimeObj.day) + '-'
-                    + str(dateTimeObj.hour) + '_' + str(dateTimeObj.minute) + '_' +
-                    str(dateTimeObj.second))
-        
-        fileName = ("C:/Users/srv_plank/Documents/computerGeneratedHolography/data/" 
-                    + preamble + 'Exposure.csv')
-        if not os.path.exists(fileName): np.savetxt(fileName, data, delimiter=",")
-        
-        raise Exception('Saving data.')    
-
-       
 
 def startCountrate(channels = [1,2], N = 100,  binwidth = 1000, binnumber = 200, timeInt = 0.2):
     global LARGE_FONT, f, a
