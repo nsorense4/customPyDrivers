@@ -13,18 +13,14 @@ import numpy as np
 
 # for plotting real time
 matplotlib.use("TkAgg")
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, 
-NavigationToolbar2Tk)
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
-import nidaqmx
 from datetime import datetime
 import os
 
 import tkinter as tk
-import sys
-from scipy.ndimage.interpolation import shift
 
 try:
     import TimeTagger
@@ -45,27 +41,18 @@ from TimeTagger import (createTimeTagger, Combiner, Coincidence, Counter,
 
 import time
 from time import sleep
+
         
 class timeTaggerCustom(tk.Frame):
-   
-    
-    def __init__(self, parent, controller):
-        LARGE_FONT= ("Verdana", 12)
-        style.use("ggplot")
+    def __init__(self, parent):
+        global LARGE_FONT
         
-        f = Figure(figsize=(5,5), dpi=100)
-        a = f.add_subplot(111)
-        
-        tk.Frame.__init__(self,parent)
-        tk.Frame.__init__(self,parent)
-        label = tk.Label(self, text="TimeTagging", font=self.LARGE_FONT)
+        tk.Frame.__init__(self)
+        tk.Frame.__init__(self)
+        label = tk.Label(self, text="TimeTagging", font=LARGE_FONT)
         label.pack(pady=10,padx=10)
 
-        # button = ttk.Button(self, text="Visit Page 1",
-        #                     command=lambda: controller.show_frame(PageOne))
-        # button.pack()      
-
-        canvas = FigureCanvasTkAgg(self.f, self)
+        canvas = FigureCanvasTkAgg(f, self)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
@@ -73,11 +60,12 @@ class timeTaggerCustom(tk.Frame):
         
     def initTimeTagger(channels, trig=0.1, deadtime=6000):
         # create a timetagger instance
+        lenChannels = int(len(channels))
         tagger = createTimeTagger()
         tagger.reset()
         
         #Set the trigger level and deadtime for each channel
-        for i in range(len(channels)):
+        for i in range(lenChannels):
             tagger.setTriggerLevel(i, trig)
             tagger.setDeadtime(i, deadtime)
             tagger.setInputDelay(channel=channels[i],delay=0)
@@ -88,40 +76,21 @@ class timeTaggerCustom(tk.Frame):
         tagger.sync()
         
         return tagger, cr
-    
-    def startCountrate(self, channels = [1,2], N = 100,  binwidth = 1000, binnumber = 200, timeInt = 0.2):
-        tagger, cr = self.initTimeTagger(channels)
-        
-        #wait and then start taking data
-        sleep(0.1)
-        
-        startTime = time.time()
-        crData = np.zeros(N, len(channels))
-        timeList = np.zeros(N)
-               
-        app = application()
-        ani = animation.FuncAnimation(self.f, 
-                                      self.animateCountrate(channels, crData, 
-                                                            timeList, startTime, 
-                                                            timeInt, cr),
-                                      interval=100)
-        app.mainloop()
 
-        
-    def animateCountrate(self, channels, crData, timeList, startTime, timeInt, cr):
-        
+    def animateCountrate(channels, crData, timeList, startTime, timeInt, cr):
+        global a, f
         timeList = np.roll(timeList, -1, axis = 0)
         timeList[-1] = time.time()-startTime
         crData = np.roll(crData, -1, axis = 0)
         crData[-1, :] = cr.getData()
         
-        self.a.clear()
+        a.clear()
         for i in range(len(channels)):
-            self.a.plot(timeList, data[:,i])
+            a.plot(timeList, crData[:,i])
         
-        self.a.set_xlabel('Time (s)')
-        self.a.set_ylabel('Power (mW)')
-        self.f.tight_layout()
+        a.set_xlabel('Time (s)')
+        a.set_ylabel('Power (mW)')
+        f.tight_layout()
         time.sleep(timeInt)
         
     # def animateCountrateHistogram(i):
@@ -182,7 +151,7 @@ class application(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-        frame1 = timeTaggerCustom(container, self)
+        frame1 = timeTaggerCustom(self)
         self.frames[timeTaggerCustom] = frame1
         frame1.grid(row=0, column=0, sticky="nsew")
         self.show_frame(timeTaggerCustom)
@@ -204,5 +173,36 @@ class application(tk.Tk):
                     + preamble + 'Exposure.csv')
         if not os.path.exists(fileName): np.savetxt(fileName, data, delimiter=",")
         
-        raise Exception('Saving data.')         
+        raise Exception('Saving data.')    
 
+       
+
+def startCountrate(channels = [1,2], N = 100,  binwidth = 1000, binnumber = 200, timeInt = 0.2):
+    global LARGE_FONT, f, a
+    LARGE_FONT = ("Verdana", 12)
+    style.use("ggplot")
+    
+    f = Figure(figsize=(5,5), dpi=100)
+    a = f.add_subplot(111)
+    
+    # initialize time tagger
+    tagger, cr = timeTaggerCustom.initTimeTagger(channels = channels)
+    lenChannels = int(len(channels))
+    
+    #wait and then start taking data
+    sleep(0.1)
+    
+    startTime = time.time()
+    crData = np.zeros([N, lenChannels])
+    timeList = np.zeros(N)
+    
+    app = application()
+    ani = animation.FuncAnimation(f, 
+                                  timeTaggerCustom.animateCountrate(channels, crData, 
+                                                        timeList, startTime, 
+                                                        timeInt, cr),
+                                  interval=100)
+    app.mainloop()
+
+if __name__ == "__main__":
+    startCountrate()
